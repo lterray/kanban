@@ -111,7 +111,7 @@ function kanbanGrid(parameters, containerSelector) {
                         '<div class="' + (field.cssClass ? field.cssClass : '') + '">' +
                         '<label>' + field.name + '</label>' +
                         (field.link ? '<a href="' + field.link + '" target="_blank">' : '') +
-                        '{' + field.map + '}' +
+                        '<span data-key="' + field.map + '">{' + field.map + '}</span>' +
                         (field.link ? '</a>' : '') +
                         '</div>';
 
@@ -167,9 +167,9 @@ function kanbanGrid(parameters, containerSelector) {
         var currentNumInColumn = document.querySelectorAll(containerSelector + ' td[data-column-value="' + targetTd.getAttribute('data-column-value') + '"] .kanban-item:not([data-index="'+indexOfCurrentElement+'"])').length;
         var currentNumInRow = document.querySelectorAll(containerSelector + ' td[data-row-value="' + targetTd.getAttribute('data-row-value') + '"] .kanban-item:not([data-index="'+indexOfCurrentElement+'"])').length;
         
-        if (columnLimit < currentNumInColumn + 1) {
+        if (columnLimit != -1 && columnLimit < currentNumInColumn + 1) {
             alert(targetTd.getAttribute('data-column-value') + ' limit (' + columnLimit + ') < ' + (currentNumInColumn + 1));
-        } else if (rowLimit < currentNumInRow + 1) {
+        } else if (rowLimit != -1 && rowLimit < currentNumInRow + 1) {
             alert(targetTd.getAttribute('data-row-value') + ' limit (' + rowLimit + ') < ' + (currentNumInRow + 1));
         } else {
             return false;
@@ -225,7 +225,28 @@ function kanbanGrid(parameters, containerSelector) {
         xmlhttp.send();
     }
 
-    function initDragAndDrop(kanbanTable, kanbanTableSelector, transactionCallback, source, transactionUrl, fieldList) {
+    function getValueByName(fieldValues, keyValue) {
+        var result = fieldValues.filter(function( obj ) {
+            return obj.name == keyValue;
+        })[0];
+        return result ? result.value : '';
+    }
+    
+    function processAjaxResult(ajaxResult, changedObject, changedItem) {
+        if (ajaxResult.error) {
+            alert(ajaxResult.error);
+        } else if (ajaxResult.changes) {
+            for (changedColumn in ajaxResult.changes) {
+                if (ajaxResult.changes.hasOwnProperty(changedColumn) && changedObject[changedColumn]) {
+                    changedObject[changedColumn] = ajaxResult.changes[changedColumn];
+                    changedItem.querySelector('span[data-key="' + changedColumn + '"]').innerHTML = ajaxResult.changes[changedColumn];
+                }
+            }
+        }
+    }
+
+    function initDragAndDrop(kanbanTable, kanbanTableSelector, transactionCallback, source, transactionUrl, fieldList,
+                                columnField, columns, rowField, rows) {
             interact('.kanban-item', {
                 context: kanbanTable
             }).draggable({
@@ -278,23 +299,39 @@ function kanbanGrid(parameters, containerSelector) {
                 removeHighlights(event.target, 'hovered');
             },
             ondrop: function (event) {
-                removeHighlights(event.target, 'hovered');
+                var goalTd = event.target;
+                var droppedItem = event.relatedTarget;
+                removeHighlights(goalTd, 'hovered');
                 
                 var dropValid = true;
-                var dropValid = !isOverLimit(event.target, event.relatedTarget);
+                var dropValid = !isOverLimit(goalTd, droppedItem);
                 if (dropValid) {
                     if (transactionCallback) {
-                        var droppedObj = source[event.relatedTarget.getAttribute('data-index')];
-                        dropValid = transactionCallback(droppedObj);
+                        var droppedObj = source[droppedItem.getAttribute('data-index')];
+                        var dropValid = transactionCallback(droppedObj, droppedItem);
+                    }
+                    if (transactionUrl) {
+                        // extract data from droppedObj (check url for {example} fields)
+                        var transactionUrlReplaced  = replaceFieldsInString(transactionUrl, fieldList, droppedObj);
+                        transactionUrlReplaced = transactionUrlReplaced.replace('{' + columnField + '-value}', getValueByName(columns, goalTd.getAttribute('data-column-value')));
+                        if (rowField) {
+                            transactionUrlReplaced = transactionUrlReplaced.replace('{' + rowField + '-value}', getValueByName(rows, goalTd.getAttribute('data-row-value')));
+                        }
+                        //console.log(transactionUrlReplaced);
+                        var ajaxResult = ajaxCall(transactionUrlReplaced);
+                        var dropValid = processAjaxResult(ajaxResult, droppedObj, droppedItem);
                     }
                     if (dropValid) {
-                        event.target.appendChild(event.relatedTarget);
+                        var newColumnValue = goalTd.getAttribute('data-column-value');
+                        droppedObj[columnField] = newColumnValue;
+                        droppedItem.querySelector('span[data-key="' + columnField + '"]').innerHTML = newColumnValue;
                         
-                        if (transactionUrl) {
-                            // extract data from droppedObj (check url for {example} fields)
-                            var transactionUrlReplaced  = replaceFieldsInString(transactionUrl, fieldList, droppedObj);
-                            ajaxCall(transactionUrlReplaced);
+                        if (rowField) {
+                            var newRowValue = goalTd.getAttribute('data-row-value');
+                            droppedObj[rowField] = newRowValue;
+                            droppedItem.querySelector('span[data-key="' + rowField + '"]').innerHTML = newRowValue;
                         }
+                        goalTd.appendChild(droppedItem);
                     }
                 }
             }
@@ -308,18 +345,19 @@ function kanbanGrid(parameters, containerSelector) {
         container.appendChild(table);
 
         // add items to table
-        addItemsToTable(parameters.fieldList, parameters.source, parameters.config.columnField, parameters.config.rowField, createItemTemplate(parameters.fieldList), table, parameters.config.colorField, parameters.config.colorValues);
+        addItemsToTable(parameters.fieldList, parameters.source, parameters.config.columnField,
+                        parameters.config.rowField, createItemTemplate(parameters.fieldList),
+                        table, parameters.config.colorField, parameters.config.colorValues);
 
         // show the table
         table.style.display = "block";
 
-        initDragAndDrop(table, containerSelector, parameters.config.transactionCallback, parameters.source, parameters.config.transactionUrl, parameters.fieldList);
+        initDragAndDrop(table, containerSelector, parameters.config.transactionCallback,
+                        parameters.source, parameters.config.transactionUrl, parameters.fieldList,
+                        parameters.config.columnField, parameters.config.columns,
+                        parameters.config.rowField, parameters.config.rows);
     }
     buildKanban();
-
-    // TODO: design amendments, pl hettar ne takarja el az elemet
-
-    // TODO: jsfiddle
 
     var api = {
         refresh: function (newConfig) {
