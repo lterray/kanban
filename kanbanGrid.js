@@ -202,13 +202,13 @@ function kanbanGrid(parameters, containerSelector) {
         target.classList.remove(cssClass);
     }
     
-    function ajaxCall(url, droppedObj, droppedItem) {
+    function ajaxCall(url, droppedObj, droppedItem, successCallback) {
         var xmlhttp = new XMLHttpRequest();
 
         xmlhttp.onreadystatechange = function() {
             if (xmlhttp.readyState == XMLHttpRequest.DONE ) {
                 if (xmlhttp.status == 200) {
-                    processAjaxResult(xmlhttp.responseText, droppedObj, droppedItem);
+                    processAjaxResult(xmlhttp.responseText, droppedObj, droppedItem, successCallback);
                 } else if (xmlhttp.status == 400) {
                     alert('There was an error 400 during ajax call');
                     return false;
@@ -230,12 +230,13 @@ function kanbanGrid(parameters, containerSelector) {
         return result ? result.value : '';
     }
     
-    function processAjaxResult(ajaxResult, changedObject, changedItem) {
+    function processAjaxResult(ajaxResult, changedObject, changedItem, successCallback) {
         ajaxResult = JSON.parse(ajaxResult);
         if (ajaxResult.error) {
             alert(ajaxResult.error);
         } else if (ajaxResult.changes) {
             for (changedColumn in ajaxResult.changes) {
+                successCallback();
                 if (ajaxResult.changes.hasOwnProperty(changedColumn) && changedObject[changedColumn]) {
                     changedObject[changedColumn] = ajaxResult.changes[changedColumn];
                     changedItem.querySelector('span[data-key="' + changedColumn + '"]').innerHTML = ajaxResult.changes[changedColumn];
@@ -312,7 +313,19 @@ function kanbanGrid(parameters, containerSelector) {
                     }
                     var newColumnValue = goalTd.getAttribute('data-column-value');
                     var newRowValue = rowField ? goalTd.getAttribute('data-row-value') : 'na';
-                    if (transactionUrl) {
+                    
+                    var successCallback = function () {
+                                        droppedObj[columnField] = newColumnValue;
+                                        droppedItem.querySelector('span[data-key="' + columnField + '"]').innerHTML = newColumnValue;
+
+                                        if (rowField) {
+                                            droppedObj[rowField] = newRowValue;
+                                            droppedItem.querySelector('span[data-key="' + rowField + '"]').innerHTML = newRowValue;
+                                        }
+                                        goalTd.appendChild(droppedItem);
+                                    };
+                    
+                    if (dropValid && transactionUrl) {
                         // extract data from droppedObj (check url for {example} fields)
                         var transactionUrlReplaced = transactionUrl.replace('{' + columnField + '}', newColumnValue);
                         transactionUrlReplaced = transactionUrlReplaced.replace('{' + columnField + '-value}', getValueByName(columns, goalTd.getAttribute('data-column-value')));
@@ -322,17 +335,9 @@ function kanbanGrid(parameters, containerSelector) {
                         }
                         transactionUrlReplaced  = replaceFieldsInString(transactionUrlReplaced, fieldList, droppedObj);
                         //console.log(transactionUrlReplaced);
-                        ajaxCall(transactionUrlReplaced, droppedObj, droppedItem);
-                    }
-                    if (dropValid) {
-                        droppedObj[columnField] = newColumnValue;
-                        droppedItem.querySelector('span[data-key="' + columnField + '"]').innerHTML = newColumnValue;
-                        
-                        if (rowField) {
-                            droppedObj[rowField] = newRowValue;
-                            droppedItem.querySelector('span[data-key="' + rowField + '"]').innerHTML = newRowValue;
-                        }
-                        goalTd.appendChild(droppedItem);
+                        ajaxCall(transactionUrlReplaced, droppedObj, droppedItem, successCallback);
+                    } else if (dropValid) {
+                        successCallback();
                     }
                 }
             }
