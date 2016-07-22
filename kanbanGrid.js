@@ -202,22 +202,20 @@ function kanbanGrid(parameters, containerSelector) {
         target.classList.remove(cssClass);
     }
     
-    function ajaxCall(url, callback) {
+    function ajaxCall(url, droppedObj, droppedItem) {
         var xmlhttp = new XMLHttpRequest();
 
         xmlhttp.onreadystatechange = function() {
             if (xmlhttp.readyState == XMLHttpRequest.DONE ) {
-               if (xmlhttp.status == 200) {
-                   if (callback) {
-                       callback(xmlhttp.responseText);
-                   }
-               }
-               else if (xmlhttp.status == 400) {
-                  alert('There was an error 400 during ajax call');
-               }
-               else {
-                   alert('There was an error (other than 400) during ajax call');
-               }
+                if (xmlhttp.status == 200) {
+                    processAjaxResult(xmlhttp.responseText, droppedObj, droppedItem);
+                } else if (xmlhttp.status == 400) {
+                    alert('There was an error 400 during ajax call');
+                    return false;
+                } else {
+                    alert('There was an error (other than 400) during ajax call');
+                    return false;
+                }
             }
         };
 
@@ -233,6 +231,7 @@ function kanbanGrid(parameters, containerSelector) {
     }
     
     function processAjaxResult(ajaxResult, changedObject, changedItem) {
+        ajaxResult = JSON.parse(ajaxResult);
         if (ajaxResult.error) {
             alert(ajaxResult.error);
         } else if (ajaxResult.changes) {
@@ -245,7 +244,8 @@ function kanbanGrid(parameters, containerSelector) {
         }
     }
 
-    function initDragAndDrop(kanbanTable, kanbanTableSelector, transactionCallback, source, transactionUrl, fieldList,
+    function initDragAndDrop(kanbanTable, kanbanTableSelector, transactionCallback,
+                                source, transactionUrl, fieldList,
                                 columnField, columns, rowField, rows) {
             interact('.kanban-item', {
                 context: kanbanTable
@@ -310,24 +310,25 @@ function kanbanGrid(parameters, containerSelector) {
                         var droppedObj = source[droppedItem.getAttribute('data-index')];
                         var dropValid = transactionCallback(droppedObj, droppedItem);
                     }
+                    var newColumnValue = goalTd.getAttribute('data-column-value');
+                    var newRowValue = rowField ? goalTd.getAttribute('data-row-value') : 'na';
                     if (transactionUrl) {
                         // extract data from droppedObj (check url for {example} fields)
-                        var transactionUrlReplaced  = replaceFieldsInString(transactionUrl, fieldList, droppedObj);
+                        var transactionUrlReplaced = transactionUrl.replace('{' + columnField + '}', newColumnValue);
                         transactionUrlReplaced = transactionUrlReplaced.replace('{' + columnField + '-value}', getValueByName(columns, goalTd.getAttribute('data-column-value')));
                         if (rowField) {
+                            transactionUrlReplaced = transactionUrlReplaced.replace('{' + rowField + '}',  newRowValue);
                             transactionUrlReplaced = transactionUrlReplaced.replace('{' + rowField + '-value}', getValueByName(rows, goalTd.getAttribute('data-row-value')));
                         }
+                        transactionUrlReplaced  = replaceFieldsInString(transactionUrlReplaced, fieldList, droppedObj);
                         //console.log(transactionUrlReplaced);
-                        var ajaxResult = ajaxCall(transactionUrlReplaced);
-                        var dropValid = processAjaxResult(ajaxResult, droppedObj, droppedItem);
+                        ajaxCall(transactionUrlReplaced, droppedObj, droppedItem);
                     }
                     if (dropValid) {
-                        var newColumnValue = goalTd.getAttribute('data-column-value');
                         droppedObj[columnField] = newColumnValue;
                         droppedItem.querySelector('span[data-key="' + columnField + '"]').innerHTML = newColumnValue;
                         
                         if (rowField) {
-                            var newRowValue = goalTd.getAttribute('data-row-value');
                             droppedObj[rowField] = newRowValue;
                             droppedItem.querySelector('span[data-key="' + rowField + '"]').innerHTML = newRowValue;
                         }
