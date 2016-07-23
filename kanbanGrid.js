@@ -231,15 +231,28 @@ function kanbanGrid(parameters, containerSelector) {
     }
     
     function processAjaxResult(ajaxResult, changedObject, changedItem, successCallback) {
-        ajaxResult = JSON.parse(ajaxResult);
-        if (ajaxResult.error) {
-            alert(ajaxResult.error);
-        } else if (ajaxResult.changes) {
-            for (changedColumn in ajaxResult.changes) {
+        var validJson = true;
+        try {
+            ajaxResult = JSON.parse(ajaxResult);
+        } catch(e){
+            validJson = false;
+            alert('Invalid return value from server (not a json object)');
+        }
+        
+        if (validJson) {
+            if (!ajaxResult.result || ajaxResult.result.toLowerCase() !== 'ok') {
+                var errorMessage = ajaxResult.error ? ajaxResult.error : 'Error on server side';
+                alert(errorMessage);
+            } else {
                 successCallback();
-                if (ajaxResult.changes.hasOwnProperty(changedColumn) && changedObject[changedColumn]) {
-                    changedObject[changedColumn] = ajaxResult.changes[changedColumn];
-                    changedItem.querySelector('span[data-key="' + changedColumn + '"]').innerHTML = ajaxResult.changes[changedColumn];
+                if (ajaxResult.changes) {
+                    for (changedColumn in ajaxResult.changes) {
+                        successCallback();
+                        if (ajaxResult.changes.hasOwnProperty(changedColumn) && changedObject[changedColumn]) {
+                            changedObject[changedColumn] = ajaxResult.changes[changedColumn];
+                            changedItem.querySelector('span[data-key="' + changedColumn + '"]').innerHTML = ajaxResult.changes[changedColumn];
+                        }
+                    }
                 }
             }
         }
