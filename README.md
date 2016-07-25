@@ -6,7 +6,7 @@ Kanban table implementation
 
 ### Demo
 [JSFiddle demo](https://jsfiddle.net/tlaci/a6LL4a13)
-
+<p><image src="screenshot.png" /></p>
 ### Why
 We wanted to insert a classic kanban table into an issue tracker application and let the user drag and drop the elements in the table changing their properties accordingly.
 
