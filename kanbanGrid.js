@@ -178,15 +178,19 @@ function kanbanGrid(parameters, containerSelector) {
         
     }
 
-    function addHighlights(target, cssClass) {
+    function addHighlights(target, cssClass, infoDiv) {
+        var info = '';
         var columnHeader = getColumnHeader(target);
         var rowHeader = getRowHeader(target);
         if (columnHeader) {
             columnHeader.classList.add(cssClass);
+            info += '<p class="column-info">Column: ' + columnHeader.innerHTML + '</p>';
         }
         if (rowHeader) {
             rowHeader.classList.add(cssClass);
+            info += '<p class="row-info">Row: ' + rowHeader.innerHTML + '</p>';
         }
+        infoDiv.innerHTML = info;
         target.classList.add(cssClass);
     }
 
@@ -259,8 +263,8 @@ function kanbanGrid(parameters, containerSelector) {
     }
 
     function initDragAndDrop(kanbanTable, kanbanTableSelector, transactionCallback,
-                                source, transactionUrl, fieldList,
-                                columnField, columns, rowField, rows) {
+                                source, transactionUrl, fieldList, columnField,
+                                columns, rowField, rows, infoDiv) {
             interact('.kanban-item', {
                 context: kanbanTable
             }).draggable({
@@ -307,12 +311,14 @@ function kanbanGrid(parameters, containerSelector) {
             overlap: 'pointer',
             ondragenter: function (event) {
                 var dropzoneElement = event.target;
-                addHighlights(dropzoneElement, 'hovered');
+                addHighlights(dropzoneElement, 'hovered', infoDiv);
+                infoDiv.style.display = 'inline-block';
             },
             ondragleave: function (event) {
                 removeHighlights(event.target, 'hovered');
             },
             ondrop: function (event) {
+                infoDiv.style.display = 'none';
                 var goalTd = event.target;
                 var droppedItem = event.relatedTarget;
                 removeHighlights(goalTd, 'hovered');
@@ -358,6 +364,12 @@ function kanbanGrid(parameters, containerSelector) {
     }
 
     function buildKanban() {
+        // add div which shows the current row and column values during dragging
+        var infoDiv = document.createElement('div');
+        infoDiv.className = 'info-div';
+        infoDiv.style.display = "none";
+        container.appendChild(infoDiv);
+        
         // create table
         var table = tableCreate(parameters.config.columns, parameters.config.rows);
         table.style.display = "none";
@@ -374,7 +386,7 @@ function kanbanGrid(parameters, containerSelector) {
         initDragAndDrop(table, containerSelector, parameters.config.transactionCallback,
                         parameters.source, parameters.config.transactionUrl, parameters.fieldList,
                         parameters.config.columnField, parameters.config.columns,
-                        parameters.config.rowField, parameters.config.rows);
+                        parameters.config.rowField, parameters.config.rows, infoDiv);
     }
     buildKanban();
 
