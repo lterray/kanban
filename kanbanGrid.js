@@ -54,7 +54,7 @@ function kanbanGrid(parameters, containerSelector) {
         return colour;
     }
 
-    function tableCreate(columnData, rowData) {
+    function tableCreate(columnData, rowData, zeroLimitColor) {
         var table = document.createElement('table');
         table.className += ' kanban-grid';
         table.style.width = '100%';
@@ -76,8 +76,13 @@ function kanbanGrid(parameters, containerSelector) {
                 } else if (columnIndex !== -1 && rowIndex !== -1) {
                     td.setAttribute('data-row-value', rowDataExists ? rowData[rowIndex].name : 'na');
                     td.setAttribute('data-column-value', columnData[columnIndex].name);
-                    td.setAttribute('data-row-limit', rowDataExists && rowData[rowIndex].limit ? rowData[rowIndex].limit : -1);
-                    td.setAttribute('data-column-limit', columnData[columnIndex].limit ? columnData[columnIndex].limit : -1);
+                    var rowLimit = rowDataExists && rowData[rowIndex].hasOwnProperty('limit') ? rowData[rowIndex].limit : -1;
+                    var columnLimit = columnData[columnIndex].hasOwnProperty('limit') ? columnData[columnIndex].limit : -1;
+                    td.setAttribute('data-row-limit', rowLimit);
+                    td.setAttribute('data-column-limit', columnLimit);
+                    if ((rowLimit === 0 || columnLimit === 0) && zeroLimitColor) {
+                        td.style.backgroundColor = zeroLimitColor;
+                    }
                 }
                 
                 td.appendChild(document.createTextNode(cellText));
@@ -166,7 +171,6 @@ function kanbanGrid(parameters, containerSelector) {
         
         var currentNumInColumn = document.querySelectorAll(containerSelector + ' td[data-column-value="' + targetTd.getAttribute('data-column-value') + '"] .kanban-item:not([data-index="'+indexOfCurrentElement+'"])').length;
         var currentNumInRow = document.querySelectorAll(containerSelector + ' td[data-row-value="' + targetTd.getAttribute('data-row-value') + '"] .kanban-item:not([data-index="'+indexOfCurrentElement+'"])').length;
-        
         if (columnLimit != -1 && columnLimit < currentNumInColumn + 1) {
             alert(targetTd.getAttribute('data-column-value') + ' limit (' + columnLimit + ') < ' + (currentNumInColumn + 1));
         } else if (rowLimit != -1 && rowLimit < currentNumInRow + 1) {
@@ -371,7 +375,8 @@ function kanbanGrid(parameters, containerSelector) {
         container.appendChild(infoDiv);
         
         // create table
-        var table = tableCreate(parameters.config.columns, parameters.config.rows);
+        var table = tableCreate(parameters.config.columns, parameters.config.rows,
+                                parameters.config.zeroLimitColor);
         table.style.display = "none";
         container.appendChild(table);
 
