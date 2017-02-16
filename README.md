@@ -93,7 +93,7 @@ Explanation (* = mandatory):
 - **rows** (array of the row descriptor objects): these are the possible values for the row field. Structure is same as for the columns
 - **colorField** (*, string): the items will be colored by this field
 - **colorValues** (object): if not given then the colors are automatically generated. If given then colors can be defined for the possible values of the color field (example above). It expects css color definitions.
-- **zeroLimitColor** (*, string): If it is defined and there is any row or column with 0 limit then the cells of the row or column will get this background color. It expects css color definitions.
+- **zeroLimitColor** (string): If it is defined and there is any row or column with 0 limit then the cells of the row or column will get this background color. It expects css color definitions.
 - **transactionUrl** (string): when an item is dropped then this URL is called if given. It can use field names like {id} which will be replaced by the values of the dropped item. It can contain not only the name of the column/row fields but its values with {<column/row field name>-value} syntax.
   - For example if the column field is ‘state’ and the item is dropped into the ‘inProgress’ column, where the value for name ‘inProgress’ is '3' (defined in *columns* array) then “exampleurl.com?status={status}&sv={status-value}” transactionUrl will be converted to this ajax call: “exampleurl.com?status=InProgress&sv=3”
     - Return value must be a JSON object string if something else is returned the throws error and the item is put back to its original place
